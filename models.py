@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 import time
-import msvcrt  # Windows 專用，按鍵偵測
+import msvcrt
 
 class AbstractTimer(ABC):
     def __init__(self, duration_minutes):
