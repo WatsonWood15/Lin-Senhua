@@ -1,6 +1,16 @@
 # COMPS209W Course Project  
-**Library Management System + Heap & Heap Sort**
+**🍅 Pomodoro Timer**
 
+A clean, modern, and customizable **Pomodoro Timer** built with Python to help you stay focused and productive.
+
+## Features
+- Customizable work / short break / long break durations (in minutes)
+- Task management with priority levels (1–10)
+- Priority ranking powered by Heap Sort (highest priority first)
+- Beautiful dark-mode GUI (Tkinter) with large countdown display
+- Volume slider with animated feedback when music is playing (optional extension)
+- Double-click to launch (no console window)
+  
 ## 📁 Repository Structure
 
 ```text
@@ -12,14 +22,38 @@ PomodoroTimer/
 ├── gui_main.pyw              # GUI version (Tkinter) - double-click to run
 ├── run.bat                   # Double-click launcher for GUI (no console window)
 └── README.md                 # This file
+```
+---
 
-🚀 How to Run
-GUI Version (Recommended - Modern Interface)
+## 🚀 How to Run
 
-Double-click run.bat
-→ Opens a clean, dark-mode GUI window (no black console)
-Features:
-Custom work/break time (set in minutes)
-Add tasks with priority (1–10)
-Show priority ranking (Heap Sort)
-Countdown timer with pause/resume/exit support
+### GUI Version (Recommended)
+
+1. Double-click `run.bat`  
+   → Opens a clean, dark-mode GUI window (no black console)
+
+2. Features:
+   - Customizable work/break time (set in minutes)
+   - Add tasks with priority (1–10)
+   - Show task priority ranking using Heap Sort
+   - Countdown timer with pause/resume/exit support (keyboard P/Q/Enter)
+
+### Console Version
+
+```bash
+cd PomodoroTimer
+python main.py
+
+```
+Menu options:
+
+1. Show task priority ranking (Heap Sort)
+2. Add new task
+3. Start Pomodoro cycle
+4. Exit
+
+## 🔮 Future Improvements
+
+  - Add background music from YouTube (single video support)
+  - Save/load tasks to JSON file
+  - Sound notifications for work/break end
