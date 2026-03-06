@@ -20,6 +20,7 @@ PomodoroTimer/
 ├── data.py                   # Sample tasks loader
 ├── main.py                   # Console version entry point
 ├── gui_main.pyw              # GUI version (Tkinter) - double-click to run
+├── install.bat
 ├── run.bat                   # Double-click launcher for GUI (no console window)
 └── README.md                 # This file
 ```
@@ -29,10 +30,12 @@ PomodoroTimer/
 
 ### GUI Version (Recommended)
 
-1. Double-click `run.bat`  
-   → Opens a clean, dark-mode GUI window (no black console)
+1. Double-click `install.bat`
+   → Download the prerequisites
+2. Double-click `run.bat`
+   → Opens a clean, dark-mode GUI window
 
-2. Features:
+Features:
    - Customizable work/break time (set in minutes)
    - Add tasks with priority (1–10)
    - Show task priority ranking using Heap Sort
