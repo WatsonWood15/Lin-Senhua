@@ -7,22 +7,21 @@ A clean, modern, and customizable **Pomodoro Timer** built with Python to help y
 - Customizable work / short break / long break durations (in minutes)
 - Task management with priority levels (1–10)
 - Priority ranking powered by Heap Sort (highest priority first)
-- Beautiful dark-mode GUI (Tkinter) with large countdown display
-- Volume slider with animated feedback when music is playing (optional extension)
-- Double-click to launch (no console window)
   
 ## 📁 Repository Structure
 
 ```text
 PomodoroTimer/
-├── models.py                 # AbstractTimer, WorkTimer, BreakTimer (OOP core)
-├── pomodoro_service.py       # PomodoroService + MaxHeap + Heap Sort
-├── data.py                   # Sample tasks loader
-├── main.py                   # Console version entry point
-├── gui_main.pyw              # GUI version (Tkinter) - double-click to run
-├── install.bat
-├── run.bat                   # Double-click launcher for GUI (no console window)
-└── README.md                 # This file
+├── gui_main.pyw              # Main GUI application
+├── youtube_music.py          # YouTube Music random player
+├── pomodoro_service.py       # Core service + MaxHeap
+├── models.py                 # AbstractTimer, WorkTimer, BreakTimer (OOP)
+├── data.py                   # Sample data loader (optional)
+├── main.py                   # Console version (for reference)
+├── run.bat                   # One-click launcher (recommended)
+├── install.bat               # Install required packages
+├── start_hidden.vbs          # Hidden console launcher
+├── README.md                 # This file
 ```
 ---
 
@@ -55,8 +54,9 @@ Menu options:
 3. Start Pomodoro cycle
 4. Exit
 
-## 🔮 Future Improvements
+## Inspiration & References
 
-  - Add background music from YouTube (single video support)
-  - Save/load tasks to JSON file
-  - Sound notifications for work/break end
+This project was inspired by the following excellent open-source projects:
+
+- **[KEGOMODORO](https://github.com/Kagankakao/KEGOMODORO)** – Clean Pomodoro timer design and UI layout
+- **[ytmdesktop2](https://github.com/Venipa/ytmdesktop2)** – YouTube Music desktop integration ideas
