@@ -1,137 +1,197 @@
 import tkinter as tk
 from tkinter import ttk, messagebox
-import pygame
-import os
-from pytube import YouTube
 from pomodoro_service import PomodoroService
-from data import load_sample_tasks
+from youtube_music import YouTubeMusicPlayer
 
 class PomodoroGUI:
     def __init__(self):
-        pygame.mixer.init()
         self.root = tk.Tk()
-        self.root.title("🍅 番茄鐘 - 自訂時間 & YouTube 音樂")
-        self.root.geometry("700x750")
+        self.root.title("🍅 Pomodoro Timer")
+        self.root.geometry("850x700")
+        self.root.minsize(700, 600)
         self.root.configure(bg="#1e1e1e")
-        self.root.resizable(False, False)
+        self.root.resizable(True, True)
 
         self.service = PomodoroService()
-        load_sample_tasks(self.service)
+        self.music_player = YouTubeMusicPlayer()
 
-        # 自訂時間（單位：分鐘）
-        self.work_time = 25
-        self.short_break = 5
-        self.long_break = 15
+        self.work_time = 25 * 60
+        self.short_break = 5 * 60
+        self.long_break = 15 * 60
 
-        self.time_left = self.work_time * 60
+        self.time_left = self.work_time
         self.is_running = False
         self.is_work = True
         self.cycle = 1
-        self.current_music = None
 
         self.setup_ui()
 
     def setup_ui(self):
-        # 標題
-        tk.Label(self.root, text="番茄鐘時間管理系統", font=("Microsoft YaHei", 24, "bold"),
-                 bg="#1e1e1e", fg="#ffffff").pack(pady=15)
+        main_canvas = tk.Canvas(self.root, bg="#1e1e1e", highlightthickness=0)
+        scrollbar = ttk.Scrollbar(self.root, orient="vertical", command=main_canvas.yview)
+        scrollable_frame = tk.Frame(main_canvas, bg="#1e1e1e")
 
-        # 大計時器
-        self.timer_label = tk.Label(self.root, text="25:00", font=("Digital-7", 88, "bold"),
+        scrollable_frame.bind(
+            "<Configure>",
+            lambda e: main_canvas.configure(scrollregion=main_canvas.bbox("all"))
+        )
+
+        main_canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
+        main_canvas.configure(yscrollcommand=scrollbar.set)
+
+        main_canvas.pack(side="left", fill="both", expand=True)
+        scrollbar.pack(side="right", fill="y")
+
+        def _on_mousewheel(event):
+            main_canvas.yview_scroll(int(-1 * (event.delta / 120)), "units")
+        main_canvas.bind_all("<MouseWheel>", _on_mousewheel)
+
+        content_frame = tk.Frame(scrollable_frame, bg="#1e1e1e")
+        content_frame.pack(expand=True, pady=40)
+
+        def center_content(event=None):
+            canvas_width = main_canvas.winfo_width()
+            content_width = content_frame.winfo_reqwidth()
+            if canvas_width > content_width:
+                x = (canvas_width - content_width) // 2
+                main_canvas.coords(main_canvas.find_withtag("all")[0], x, 0)
+
+        main_canvas.bind("<Configure>", center_content)
+
+        # Title
+        tk.Label(content_frame, text="Pomodoro Timer", font=("Microsoft YaHei", 28, "bold"),
+                 bg="#1e1e1e", fg="#ffffff").pack(pady=20)
+
+        # Big Timer
+        self.timer_label = tk.Label(content_frame, text="25:00", font=("Digital-7", 100, "bold"),
                                     bg="#1e1e1e", fg="#ff5252")
-        self.timer_label.pack(pady=10)
+        self.timer_label.pack(pady=20)
 
-        self.status_label = tk.Label(self.root, text=f"第 1 輪 - 工作時間 ({self.work_time} 分)", font=("Microsoft YaHei", 14),
-                                     bg="#1e1e1e", fg="#bbbbbb")
-        self.status_label.pack(pady=5)
+        self.status_label = tk.Label(content_frame, text="Work Time", 
+                                     font=("Microsoft YaHei", 18), bg="#1e1e1e", fg="#bbbbbb")
+        self.status_label.pack(pady=10)
 
-        # 自訂時間區
-        custom_frame = tk.LabelFrame(self.root, text="自訂時間 (分鐘)", font=("Microsoft YaHei", 12),
+        # Timer buttons
+        btn_frame = tk.Frame(content_frame, bg="#1e1e1e")
+        btn_frame.pack(pady=20)
+        ttk.Button(btn_frame, text="▶ Start", command=self.start_timer).grid(row=0, column=0, padx=10)
+        ttk.Button(btn_frame, text="⏸ Pause", command=self.pause_timer).grid(row=0, column=1, padx=10)
+        ttk.Button(btn_frame, text="⏭ Skip", command=self.skip_timer).grid(row=0, column=2, padx=10)
+        ttk.Button(btn_frame, text="⟳ Reset", command=self.reset_timer).grid(row=0, column=3, padx=10)
+
+        # Custom time
+        custom_frame = tk.LabelFrame(content_frame, text="Custom Time", font=("Microsoft YaHei", 12),
                                      bg="#1e1e1e", fg="#ffffff")
-        custom_frame.pack(pady=10, padx=40, fill="x")
+        custom_frame.pack(pady=20, padx=80, fill="x")
 
-        row1 = tk.Frame(custom_frame, bg="#1e1e1e")
-        row1.pack(fill="x", pady=5)
-        tk.Label(row1, text="工作時間：", bg="#1e1e1e", fg="#ffffff").pack(side="left", padx=10)
-        self.work_entry = tk.Entry(row1, width=8)
-        self.work_entry.insert(0, str(self.work_time))
-        self.work_entry.pack(side="left")
-        tk.Label(row1, text="短休息：", bg="#1e1e1e", fg="#ffffff").pack(side="left", padx=10)
-        self.short_entry = tk.Entry(row1, width=8)
-        self.short_entry.insert(0, str(self.short_break))
-        self.short_entry.pack(side="left")
-        tk.Label(row1, text="長休息：", bg="#1e1e1e", fg="#ffffff").pack(side="left", padx=10)
-        self.long_entry = tk.Entry(row1, width=8)
-        self.long_entry.insert(0, str(self.long_break))
-        self.long_entry.pack(side="left")
+        row_work = tk.Frame(custom_frame, bg="#1e1e1e")
+        row_work.pack(fill="x", pady=8)
+        tk.Label(row_work, text="Work Time:", bg="#1e1e1e", fg="#ffffff").pack(side="left", padx=10)
+        self.work_min = tk.Entry(row_work, width=5); self.work_min.insert(0, "25"); self.work_min.pack(side="left")
+        tk.Label(row_work, text="min", bg="#1e1e1e", fg="#ffffff").pack(side="left", padx=2)
+        self.work_sec = tk.Entry(row_work, width=5); self.work_sec.insert(0, "00"); self.work_sec.pack(side="left")
+        tk.Label(row_work, text="sec", bg="#1e1e1e", fg="#ffffff").pack(side="left", padx=5)
 
-        ttk.Button(custom_frame, text="套用自訂時間", command=self.apply_custom_time).pack(pady=10)
+        row_short = tk.Frame(custom_frame, bg="#1e1e1e")
+        row_short.pack(fill="x", pady=8)
+        tk.Label(row_short, text="Short Break:", bg="#1e1e1e", fg="#ffffff").pack(side="left", padx=10)
+        self.short_min = tk.Entry(row_short, width=5); self.short_min.insert(0, "5"); self.short_min.pack(side="left")
+        tk.Label(row_short, text="min", bg="#1e1e1e", fg="#ffffff").pack(side="left", padx=2)
+        self.short_sec = tk.Entry(row_short, width=5); self.short_sec.insert(0, "00"); self.short_sec.pack(side="left")
+        tk.Label(row_short, text="sec", bg="#1e1e1e", fg="#ffffff").pack(side="left", padx=5)
 
-        # 計時器按鈕
-        btn_frame = tk.Frame(self.root, bg="#1e1e1e")
-        btn_frame.pack(pady=15)
-        ttk.Button(btn_frame, text="▶ 開始", command=self.start_timer).grid(row=0, column=0, padx=10)
-        ttk.Button(btn_frame, text="⏸ 暫停", command=self.pause_timer).grid(row=0, column=1, padx=10)
-        ttk.Button(btn_frame, text="⟳ 重置", command=self.reset_timer).grid(row=0, column=2, padx=10)
+        row_long = tk.Frame(custom_frame, bg="#1e1e1e")
+        row_long.pack(fill="x", pady=8)
+        tk.Label(row_long, text="Long Break:", bg="#1e1e1e", fg="#ffffff").pack(side="left", padx=10)
+        self.long_min = tk.Entry(row_long, width=5); self.long_min.insert(0, "15"); self.long_min.pack(side="left")
+        tk.Label(row_long, text="min", bg="#1e1e1e", fg="#ffffff").pack(side="left", padx=2)
+        self.long_sec = tk.Entry(row_long, width=5); self.long_sec.insert(0, "00"); self.long_sec.pack(side="left")
+        tk.Label(row_long, text="sec", bg="#1e1e1e", fg="#ffffff").pack(side="left", padx=5)
 
-        # 音樂區
-        music_frame = tk.LabelFrame(self.root, text="🎵 YouTube 音樂播放", font=("Microsoft YaHei", 12),
+        ttk.Button(custom_frame, text="Apply Custom Time", command=self.apply_custom_time).pack(pady=15)
+
+        # YouTube Music
+        music_frame = tk.LabelFrame(content_frame, text="🎵 Music", font=("Microsoft YaHei", 12),
                                     bg="#1e1e1e", fg="#ffffff")
-        music_frame.pack(pady=15, padx=40, fill="x")
+        music_frame.pack(pady=15, padx=80, fill="x")
+        ttk.Button(music_frame, text="🎵 Open Music Player", command=self.open_youtube_music).pack(pady=15)
 
-        tk.Label(music_frame, text="貼上 YouTube 影片連結（單一影片）：", bg="#1e1e1e", fg="#ffffff").pack(anchor="w", padx=15)
-        self.music_entry = tk.Entry(music_frame, font=("Microsoft YaHei", 11))
-        self.music_entry.pack(fill="x", padx=15, pady=8)
-        self.music_entry.insert(0, "https://www.youtube.com/watch?v=dQw4w9WgXcQ")  # 測試用
+        # Task Management
+        task_frame = tk.LabelFrame(content_frame, text="Task Management", font=("Microsoft YaHei", 12),
+                                   bg="#1e1e1e", fg="#ffffff")
+        task_frame.pack(pady=15, padx=80, fill="x")
 
-        music_btn_frame = tk.Frame(music_frame, bg="#1e1e1e")
-        music_btn_frame.pack(pady=5)
-        ttk.Button(music_btn_frame, text="▶ 播放音樂", command=self.play_youtube_music).pack(side="left", padx=10)
-        ttk.Button(music_btn_frame, text="⏹ 停止音樂", command=self.stop_music).pack(side="left", padx=10)
+        input_frame = tk.Frame(task_frame, bg="#1e1e1e")
+        input_frame.pack(fill="x", padx=15, pady=8)
+        tk.Label(input_frame, text="Task Name:", bg="#1e1e1e", fg="#ffffff").pack(side="left")
+        self.task_entry = tk.Entry(input_frame, font=("Microsoft YaHei", 11))
+        self.task_entry.pack(side="left", padx=5, fill="x", expand=True)
 
-        # 音量控制 + 跳動效果
-        vol_frame = tk.Frame(music_frame, bg="#1e1e1e")
-        vol_frame.pack(fill="x", padx=15, pady=8)
-        tk.Label(vol_frame, text="音量：", bg="#1e1e1e", fg="#ffffff").pack(side="left")
-        self.volume_slider = ttk.Scale(vol_frame, from_=0, to=100, orient="horizontal", command=self.change_volume)
-        self.volume_slider.set(70)
-        self.volume_slider.pack(side="left", fill="x", expand=True, padx=10)
-
-        # 任務區
-        task_frame = tk.LabelFrame(self.root, text="任務管理", font=("Microsoft YaHei", 11), bg="#1e1e1e", fg="#ffffff")
-        task_frame.pack(pady=10, padx=40, fill="x")
-
-        tk.Label(task_frame, text="任務名稱：", bg="#1e1e1e", fg="#ffffff").pack(anchor="w", padx=15)
-        self.task_entry = tk.Entry(task_frame, font=("Microsoft YaHei", 11))
-        self.task_entry.pack(fill="x", padx=15, pady=5)
-
-        pri_frame = tk.Frame(task_frame, bg="#1e1e1e")
-        pri_frame.pack(fill="x", padx=15)
-        tk.Label(pri_frame, text="優先度 (1-10)：", bg="#1e1e1e", fg="#ffffff").pack(side="left")
-        self.pri_entry = tk.Entry(pri_frame, width=8)
+        tk.Label(input_frame, text="Priority:", bg="#1e1e1e", fg="#ffffff").pack(side="left", padx=5)
+        self.pri_entry = tk.Entry(input_frame, width=6)
         self.pri_entry.pack(side="left", padx=5)
-        ttk.Button(pri_frame, text="新增任務", command=self.add_task).pack(side="right")
 
-        ttk.Button(self.root, text="📊 顯示任務優先排行 (Heap Sort)", command=self.show_ranking).pack(pady=15)
+        self.task_listbox = tk.Listbox(task_frame, height=8, font=("Microsoft YaHei", 11), bg="#2d2d2d", fg="#ffffff")
+        self.task_listbox.pack(fill="x", padx=15, pady=8)
+
+        btn_task_frame = tk.Frame(task_frame, bg="#1e1e1e")
+        btn_task_frame.pack(fill="x", padx=15, pady=5)
+        ttk.Button(btn_task_frame, text="Add Task", command=self.add_task).pack(side="left", padx=5)
+        ttk.Button(btn_task_frame, text="Delete Selected Task", command=self.delete_selected_task).pack(side="left", padx=5)
 
         self.update_display()
 
-        # 音量跳動動畫變數
-        self.volume_anim_running = False
-        self.volume_direction = 1
-        self.volume_base = 70
+
+    def skip_timer(self):
+        if not self.is_running:
+            return
+        self.is_running = False
+        self.is_work = not self.is_work
+        if self.is_work:
+            self.time_left = self.work_time
+            self.status_label.config(text="Work Time")
+        else:
+            self.time_left = self.short_break
+            self.status_label.config(text="Break Time")
+        self.update_display()
+
+    def open_youtube_music(self):
+        self.music_player.open_player()
+
+    def add_task(self):
+        name = self.task_entry.get().strip()
+        try:
+            pri = int(self.pri_entry.get().strip())
+            if name and 1 <= pri <= 10:
+                self.service.add_task(name, pri)
+                self.task_listbox.insert(tk.END, f"{name} (Priority {pri})")
+                self.task_entry.delete(0, tk.END)
+                self.pri_entry.delete(0, tk.END)
+        except:
+            pass
+
+    def delete_selected_task(self):
+        selected = self.task_listbox.curselection()
+        if not selected:
+            return
+        index = selected[0]
+        self.task_listbox.delete(index)
 
     def apply_custom_time(self):
         try:
-            self.work_time = int(self.work_entry.get())
-            self.short_break = int(self.short_entry.get())
-            self.long_break = int(self.long_entry.get())
-            if self.work_time < 1 or self.short_break < 1 or self.long_break < 1:
-                raise ValueError
-            messagebox.showinfo("成功", "時間設定已更新")
+            w_min = int(self.work_min.get() or 0)
+            w_sec = int(self.work_sec.get() or 0)
+            s_min = int(self.short_min.get() or 0)
+            s_sec = int(self.short_sec.get() or 0)
+            l_min = int(self.long_min.get() or 0)
+            l_sec = int(self.long_sec.get() or 0)
+
+            self.work_time = w_min * 60 + w_sec
+            self.short_break = s_min * 60 + s_sec
+            self.long_break = l_min * 60 + l_sec
             self.reset_timer()
         except:
-            messagebox.showwarning("錯誤", "請輸入有效的正整數")
+            pass
 
     def update_display(self):
         m, s = divmod(self.time_left, 60)
@@ -147,7 +207,7 @@ class PomodoroGUI:
 
     def reset_timer(self):
         self.is_running = False
-        self.time_left = self.work_time * 60 if self.is_work else self.short_break * 60
+        self.time_left = self.work_time if self.is_work else self.short_break
         self.update_display()
 
     def countdown(self):
@@ -156,96 +216,11 @@ class PomodoroGUI:
             self.update_display()
             self.root.after(1000, self.countdown)
         elif self.time_left == 0:
-            messagebox.showinfo("完成！", "本輪結束！")
+            messagebox.showinfo("Completed!", "Round finished!")
             self.is_work = not self.is_work
-            self.time_left = self.work_time * 60 if self.is_work else self.short_break * 60
-            self.status_label.config(text=f"第 {self.cycle} 輪 - {'工作時間' if self.is_work else '休息時間'}")
+            self.time_left = self.work_time if self.is_work else self.short_break
+            self.status_label.config(text="Work Time" if self.is_work else "Break Time")
             self.is_running = False
-
-    def add_task(self):
-        name = self.task_entry.get().strip()
-        try:
-            pri = int(self.pri_entry.get().strip())
-            if name and 1 <= pri <= 10:
-                self.service.add_task(name, pri)
-                messagebox.showinfo("成功", f"已新增：{name}")
-                self.task_entry.delete(0, tk.END)
-                self.pri_entry.delete(0, tk.END)
-            else:
-                messagebox.showwarning("錯誤", "請輸入有效名稱與優先度")
-        except:
-            messagebox.showwarning("錯誤", "優先度必須是 1-10 的數字")
-
-    def show_ranking(self):
-        win = tk.Toplevel(self.root)
-        win.title("任務優先排行")
-        win.geometry("420x320")
-        win.configure(bg="#1e1e1e")
-        text = tk.Text(win, bg="#2d2d2d", fg="#ffffff", font=("Microsoft YaHei", 11))
-        text.pack(padx=20, pady=20, fill="both", expand=True)
-        temp = sorted(self.service.tasks, key=lambda x: x['priority'], reverse=True)
-        for i, t in enumerate(temp, 1):
-            text.insert(tk.END, f"{i}. {t['name']} (優先度 {t['priority']})\n")
-        text.config(state="disabled")
-
-    # ======================== YouTube 音樂播放 ========================
-    def play_youtube_music(self):
-        url = self.music_entry.get().strip()
-        if not url:
-            messagebox.showwarning("錯誤", "請貼上 YouTube 影片連結")
-            return
-
-        try:
-            yt = YouTube(url)
-            audio_stream = yt.streams.filter(only_audio=True, file_extension='mp4').order_by('abr').desc().first()
-            if not audio_stream:
-                messagebox.showerror("錯誤", "無法取得音訊流")
-                return
-
-            if not os.path.exists("music"):
-                os.makedirs("music")
-            file_path = audio_stream.download(output_path="music", filename="temp_audio.mp3")
-
-            if not os.path.exists(file_path) or os.path.getsize(file_path) < 100000:
-                messagebox.showerror("錯誤", "下載檔案失敗或檔案太小")
-                return
-
-            pygame.mixer.music.load(file_path)
-            pygame.mixer.music.play(-1)  # 循環播放
-            pygame.mixer.music.set_volume(self.volume_slider.get() / 100)
-
-            messagebox.showinfo("播放中", f"正在播放：{yt.title}\n\n音量可調整\n\n(若無聲音，請檢查電腦音量與耳機)")
-            self.start_volume_anim()
-
-        except Exception as e:
-            messagebox.showerror("錯誤", f"播放失敗：\n{str(e)}\n\n請確認連結是單一影片，並檢查網路")
-
-    def stop_music(self):
-        pygame.mixer.music.stop()
-        self.volume_anim_running = False
-        messagebox.showinfo("已停止", "音樂已停止")
-
-    def change_volume(self, val):
-        if pygame.mixer.music.get_busy():
-            pygame.mixer.music.set_volume(float(val) / 100)
-
-    def start_volume_anim(self):
-        if pygame.mixer.music.get_busy() and not self.volume_anim_running:
-            self.volume_anim_running = True
-            self.animate_volume()
-
-    def animate_volume(self):
-        if not self.volume_anim_running or not pygame.mixer.music.get_busy():
-            self.volume_anim_running = False
-            return
-
-        current = self.volume_slider.get()
-        new_val = current + 0.5 if self.volume_direction > 0 else current - 0.5
-        if new_val > self.volume_base + 15 or new_val < self.volume_base - 15:
-            self.volume_direction *= -1
-        self.volume_slider.set(new_val)
-        pygame.mixer.music.set_volume(new_val / 100)
-        self.root.after(120, self.animate_volume)
 
 if __name__ == "__main__":
     app = PomodoroGUI()

@@ -43,32 +43,32 @@ class PomodoroService:
         task = {"name": name, "priority": priority}
         self.tasks.append(task)
         self.heap.insert(task)
-        print(f"✅ 已新增任務：{name} (優先度 {priority})")
+        print(f"✅ Task added: {name} (Priority {priority})")
 
     def show_priority_tasks(self):
         if not self.tasks:
-            print("目前沒有任務")
+            print("No tasks yet")
             return
-        print("\n=== 任務優先排行 (Heap Sort，由高到低) ===")
+        print("\n=== Task Priority Ranking (Heap Sort, high to low) ===")
         temp_heap = MaxHeap()
         for task in self.tasks:
             temp_heap.insert(task)
         rank = 1
         while temp_heap.heap:
             task = temp_heap.extract_max()
-            print(f"{rank}. {task['name']} (優先度 {task['priority']})")
+            print(f"{rank}. {task['name']} (Priority {task['priority']})")
             rank += 1
 
     def start_pomodoro_cycle(self):
         if not self.tasks:
-            print("請先新增至少一個任務！")
+            print("Please add at least one task first!")
             return
-        print("開始標準番茄鐘循環（4 工作 + 長休息）")
+        print("Starting standard Pomodoro cycle (4 work sessions + long break)")
         for cycle in range(1, 5):
-            print(f"\n第 {cycle} 輪")
+            print(f"\nRound {cycle}")
             WorkTimer(25).start()
             if cycle < 4:
                 BreakTimer(5).start()
             else:
                 BreakTimer(15).start()
-        print("\n🎉 今日番茄鐘完成！好好休息～")
+        print("\n🎉 Pomodoro cycle completed! Rest well~")
